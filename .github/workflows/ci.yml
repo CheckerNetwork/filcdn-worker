@@ -10,11 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cp wrangler.toml.example wrangler.toml
-      - uses: actions/setup-node@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
+
       - run: npm run lint
       - run: npm test
 
@@ -24,21 +27,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          preCommands: |
-            cp wrangler.toml.example wrangler.toml
-            envsubst < wrangler.toml.example > wrangler.toml
-          postCommands: |
-            rm -f wrangler.toml
-          environment: production
-          secrets: |
-            INFLUX_TOKEN
+      - uses: cloudflare/wrangler-action@v3
         env:
-          INFLUX_METRIC_NAME: ${{ vars.INFLUX_METRIC_NAME }}
-          INFLUX_URL: ${{ vars.INFLUX_URL }}
-          INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
-          INFLUX_DATABASE: ${{ vars.INFLUX_DATABASE }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Create D1 DB // Only run if the database does not exist
+        run: |
+          if ! wrangler d1 db list | grep -q filcdn-db; then
+            wrangler d1 db create filcdn-db
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Run D1 migrations
+        run: |
+          wrangler d1 migrations apply filcdn-db
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

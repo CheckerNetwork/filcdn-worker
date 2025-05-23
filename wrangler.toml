@@ -8,3 +8,8 @@ ENVIRONMENT = "dev"
 
 [env.production.vars]
 ENVIRONMENT = "production"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "filcdn-stats"
+database_id = "filcdn-stats"
